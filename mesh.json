@@ -1,21 +1,25 @@
 {
-    "kind": "extension",
-    "id": "auth",
-    "version": "0.1.0",
     "kernel": "^0.4",
-    "entry": "src/index.ts",
-    "dependencies": {
-        "@flybyme/mesh-web": "0.4.0",
-        "typescript": "^5.9.3"
-    },
-    "requiredParts": [],
-    "mesh": [
+    "parts": [
         {
-            "package": "@flybyme/mesh-serve",
-            "version": "^0.1",
-            "contracts": [
-                "identity.ticket_issue",
-                "identity.whoami"
+            "kind": "extension",
+            "id": "auth",
+            "version": "0.1.0",
+            "entry": "src/index.ts",
+            "dependencies": {
+                "@flybyme/mesh-web": "0.4.0",
+                "typescript": "^5.9.3"
+            },
+            "requiredParts": [],
+            "mesh": [
+                {
+                    "package": "@flybyme/mesh-serve",
+                    "version": "^0.1",
+                    "contracts": [
+                        "identity.ticket_issue",
+                        "identity.whoami"
+                    ]
+                }
             ]
         }
     ]
