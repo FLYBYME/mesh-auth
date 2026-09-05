@@ -32,6 +32,10 @@ import {
     type Context, type Extension, type ProviderToken, type Signal,
 } from '@flybyme/mesh-web';
 
+import type {
+    IdentityTicketIssueOutput, IdentityWhoamiOutput,
+} from './generated/api.js';
+
 // ---------------------------------------------------------------------------- what it provides
 
 /** One organization the signed-in person belongs to, and what they are in it. */
@@ -372,20 +376,17 @@ export class AuthExtension implements Extension<typeof NEEDS, readonly [], typeo
 const UNKNOWN_LIFETIME = 0;
 
 /**
- * The two replies this reads.
+ * The two replies this reads — **generated, not written.**
  *
- * **Hand-written, and they should not be.** These are a second copy of mesh-serve's identity output
- * schemas, sitting in a different repository with nothing checking that they still agree — the exact
- * drift a generated client exists to prevent. `mesh.json` declares the three contracts; what is
- * missing is the command that turns that declaration into types. Until it exists, adding a field to
- * `identity.whoami` silently leaves this behind.
+ * They used to be hand-written here: a second copy of mesh-serve's identity output schemas, in a
+ * different repository, with nothing checking they still agreed. `npm run generate` reads the
+ * contracts `mesh.json` declares and emits them, so adding a field to `identity.whoami` now shows up
+ * as a diff rather than as a shape this file quietly disagrees with.
+ *
+ * The generated file states its shapes structurally and imports nothing but `@flybyme/mesh-web` — no
+ * zod, no reference into the repository the contracts live in — so it cannot break because a
+ * dependency changed how it infers types.
  */
-interface IssueReply { readonly token: string; readonly userId: string; readonly expiresAt: number }
-interface WhoamiReply {
-    readonly userId: string;
-    readonly email: string;
-    readonly displayName: string;
-    readonly roles: readonly string[];
-    readonly organizations: readonly Membership[];
-}
+type IssueReply = IdentityTicketIssueOutput;
+type WhoamiReply = IdentityWhoamiOutput;
 

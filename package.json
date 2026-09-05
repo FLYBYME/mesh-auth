@@ -5,9 +5,12 @@
     "type": "module",
     "private": true,
     "scripts": {
-        "typecheck": "tsc -p tsconfig.json --noEmit"
+        "generate": "mesh-serve client",
+        "check:generated": "mesh-serve client --check",
+        "typecheck": "npm run generate && tsc -p tsconfig.json --noEmit"
     },
     "devDependencies": {
+        "@flybyme/mesh-serve": "file:../mesh-serve",
         "@flybyme/mesh-web": "github:FLYBYME/mesh-web#v0.2.0",
         "typescript": "^5.9.3"
     }

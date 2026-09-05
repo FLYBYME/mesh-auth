@@ -1,0 +1,138 @@
+{
+    "application": "auth",
+    "base": "/api",
+    "exposure": "sha256:07cf3cfa6d997a8f9f3ff6c58d5dd951",
+    "calls": [
+        {
+            "key": "identity.ticket_issue",
+            "domain": "identity",
+            "action": "ticket_issue",
+            "description": "Exchange credentials for an opaque ticket.",
+            "method": "POST",
+            "path": "/identity/ticket",
+            "gate": {
+                "kind": "auth",
+                "level": "public"
+            },
+            "input": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email"
+                    },
+                    "password": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "via": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "email",
+                    "password"
+                ],
+                "additionalProperties": false,
+                "$schema": "http://json-schema.org/draft-07/schema#"
+            },
+            "output": {
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "type": "string"
+                    },
+                    "userId": {
+                        "type": "string"
+                    },
+                    "expiresAt": {
+                        "type": "number"
+                    }
+                },
+                "required": [
+                    "token",
+                    "userId",
+                    "expiresAt"
+                ],
+                "additionalProperties": false,
+                "$schema": "http://json-schema.org/draft-07/schema#"
+            },
+            "destructive": true,
+            "stream": false,
+            "errors": []
+        },
+        {
+            "key": "identity.whoami",
+            "domain": "identity",
+            "action": "whoami",
+            "description": "Who the caller is, and which organizations they belong to.",
+            "method": "GET",
+            "path": "/identity/whoami",
+            "gate": {
+                "kind": "auth",
+                "level": "public"
+            },
+            "input": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false,
+                "$schema": "http://json-schema.org/draft-07/schema#"
+            },
+            "output": {
+                "type": "object",
+                "properties": {
+                    "userId": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "roles": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "organizations": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "organizationId": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "roleKey": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "organizationId",
+                                "name",
+                                "roleKey"
+                            ],
+                            "additionalProperties": false
+                        }
+                    }
+                },
+                "required": [
+                    "userId",
+                    "email",
+                    "displayName",
+                    "roles",
+                    "organizations"
+                ],
+                "additionalProperties": false,
+                "$schema": "http://json-schema.org/draft-07/schema#"
+            },
+            "destructive": false,
+            "stream": false,
+            "errors": []
+        }
+    ]
+}
