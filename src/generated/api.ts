@@ -1,11 +1,11 @@
 // GENERATED FILE — do not edit.
 //
-// Emitted from auth's exposure descriptor by @flybyme/mesh-api.
+// Emitted from auth's mesh.json by `mesh-serve client`.
 // Exposure: sha256:07cf3cfa6d997a8f9f3ff6c58d5dd951
 //
 // Regenerate rather than editing. The exposure hash above is checked at run time against
 // the one the API reports, so a hand-edited client is a client that lies about a surface
-// nobody can verify (mesh-web spec/network.md section 6).
+// nobody can verify.
 
 import { call, defineApi } from '@flybyme/mesh-web';
 
