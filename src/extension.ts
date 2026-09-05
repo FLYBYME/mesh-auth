@@ -120,7 +120,8 @@ export interface AuthEndpoints {
     readonly issue?: string;
     /** Who the caller is, called once on boot to restore a session from a held ticket. */
     readonly whoami?: string;
-    readonly revoke?: string;
+    /** End the calling session. Ends this ticket and no other. */
+    readonly signOut?: string;
 }
 
 export interface AuthOptions {
@@ -180,7 +181,11 @@ const NEEDS = needs('credentials', 'http', 'state', 'log');
 const DEFAULTS = {
     issue: '/api/identity/ticket',
     whoami: '/api/identity/whoami',
-    revoke: '/api/identity/ticket/revoke',
+    // `sign_out`, not `ticket/revoke`. The latter is internal by its own domain and always was —
+    // it takes a `userId`, so it ends every ticket a named person holds, which is an operator
+    // suspending an account rather than a page signing out. This file posted to it anyway until the
+    // client generator refused the contract and said so.
+    signOut: '/api/identity/sign_out',
 } as const;
 
 /**
@@ -370,7 +375,7 @@ export class AuthExtension implements Extension<typeof NEEDS, readonly [], typeo
                 if (held === undefined) return;
 
                 try {
-                    await request(endpoints.revoke, 'POST', { token: held });
+                    await request(endpoints.signOut, 'POST', { token: held });
                 } catch (error) {
                     // The ticket still expires on its own. Telling the user their sign-out failed,
                     // when locally it did not, would be worse than a log line.
