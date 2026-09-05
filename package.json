@@ -7,11 +7,16 @@
     "scripts": {
         "generate": "mesh-serve client",
         "check:generated": "mesh-serve client --check",
-        "typecheck": "npm run generate && tsc -p tsconfig.json --noEmit"
+        "typecheck": "npm run generate && tsc -p tsconfig.json --noEmit",
+        "test:browser": "vitest run --config vitest.browser.config.ts",
+        "test": "npm run typecheck && npm run test:browser"
     },
     "devDependencies": {
         "@flybyme/mesh-serve": "file:../mesh-serve",
-        "@flybyme/mesh-web": "github:FLYBYME/mesh-web#v0.4.0",
-        "typescript": "^5.9.3"
+        "@flybyme/mesh-web": "github:FLYBYME/mesh-web#v0.5.0",
+        "@vitest/browser": "^2.1.9",
+        "playwright": "^1.63.0",
+        "typescript": "^5.9.3",
+        "vitest": "^2.1.9"
     }
 }
