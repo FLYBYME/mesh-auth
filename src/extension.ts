@@ -163,14 +163,19 @@ export function sessionTicketStore(key = 'mesh-web/ticket'): TicketStore {
 }
 
 /**
- * Deliberately without `mesh`.
+ * `http`, and deliberately not `mesh`.
  *
  * `mesh` is typed by the API a contribution declares in its manifest, and this Extension is not tied
  * to one generated client — a site may point it at any identity answering the three shapes below.
- * Declaring `needs('mesh')` with no `api` is a manifest mistake the kernel refuses outright, and it
- * would be the wrong tool here anyway: `credentials` already carries the origin.
+ * `mesh` also routes through the credential seam, which this Extension *provides*, and sending the
+ * attached ticket during sign-in — when there is not one yet — would be a circle with no useful end.
+ *
+ * `http` is therefore the right tool and it had to be added to get it. **This file called global
+ * `fetch` until 2026-09-06**, which is network access nobody granted and nobody could see in a
+ * manifest: exactly the failure the capability model exists to prevent, committed by the part best
+ * placed to know better. `needs('http')` is now visible to anyone composing a site with this in it.
  */
-const NEEDS = needs('credentials', 'state', 'log');
+const NEEDS = needs('credentials', 'http', 'state', 'log');
 
 const DEFAULTS = {
     issue: '/api/identity/ticket',
@@ -257,20 +262,24 @@ export class AuthExtension implements Extension<typeof NEEDS, readonly [], typeo
             method: 'GET' | 'POST',
             body?: unknown,
         ): Promise<T | undefined> => {
-            const response = await fetch(`${cx.credentials.origin}${path}`, {
+            const response = await cx.http.request<T>(`${cx.credentials.origin}${path}`, {
                 method,
-                headers: {
-                    ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-                    ...(ticket === undefined ? {} : { authorization: `Bearer ${ticket}` }),
-                },
-                ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-                credentials: 'omit',
+                ...(body === undefined ? {} : { body }),
+                // **The ticket is attached here, by hand, and that is the point.** `http` never
+                // attaches the page's credentials — it goes wherever it is told, so doing so would
+                // let any part holding `needs('http')` post the session to an origin of its
+                // choosing. This Extension holds the ticket and names the endpoint, so it is the one
+                // caller entitled to send it.
+                ...(ticket === undefined ? {} : { headers: { authorization: `Bearer ${ticket}` } }),
             });
 
+            // A refusal is an answer: the ticket is not good. Anything else that is not ok is the
+            // API failing, and must not be read as "not signed in" — otherwise a brief outage signs
+            // everybody out and throws away tickets that were perfectly valid.
             if (response.status === 401 || response.status === 403) return undefined;
             if (!response.ok) throw new Error(`${method} ${path} failed with ${String(response.status)}`);
 
-            return await response.json() as T;
+            return response.body;
         };
 
         const clear = (): void => {
