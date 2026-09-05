@@ -2,3 +2,6 @@ node_modules/
 dist/
 *.tsbuildinfo
 .DS_Store
+
+# `mesh-serve dev` output. Disposable, rebuilt on every run, never an artifact.
+.dev/
