@@ -45,9 +45,14 @@ A framework that silently persisted a credential would be making a security choi
 behalf. `sessionTicketStore` is offered and scoped to the tab; `localStorage` is deliberately not the
 default, because it outlives the tab and is readable by every script on the origin.
 
-**Endpoints are a parameter, not a generated client.** mesh-identity's REST paths are the usual
+**Endpoints are a parameter, not a generated client.** mesh-serve's identity REST paths are the usual
 answer and not the only possible one — a site may point this at any identity that answers the three
 shapes it uses.
+
+That is about the *paths*, not the *types*. `mesh.json` declares the three contracts this calls, so
+the generated client supplies their request and response shapes. Today those shapes are hand-written
+here as `IssueReply` and `WhoamiReply` — a second copy of mesh-serve's output schemas, in a different
+repository, with nothing checking that they still agree.
 
 ## Building
 

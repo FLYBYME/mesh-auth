@@ -34,10 +34,37 @@ import {
 
 // ---------------------------------------------------------------------------- what it provides
 
+/** One organization the signed-in person belongs to, and what they are in it. */
+export interface Membership {
+    readonly organizationId: string;
+    readonly name: string;
+    readonly roleKey: string;
+}
+
 export interface Session {
     readonly userId: string;
+    readonly email: string;
     readonly displayName: string;
+    /**
+     * **Cluster-scoped** roles, held everywhere in this deployment.
+     *
+     * Not the same thing as `membership.roleKey`, which is organization-scoped. Merging them is how
+     * `roleSatisfies('admin')` and `auth: 'admin'` came to mean different things while looking
+     * identical, and it is why they are separate fields here rather than one array.
+     */
     readonly roles: readonly string[];
+    readonly memberships: readonly Membership[];
+    /**
+     * Which organization this page is acting in, or `null` when nothing has been chosen.
+     *
+     * **`null` with memberships present is a real state, not an error** — it is a person who belongs
+     * to several organizations and has not said which. The API refuses that with `SCOPE_REQUIRED`
+     * rather than guessing, because guessing is how a request reads the wrong organization's data and
+     * the failure is silent: the wrong answer is a perfectly valid one.
+     *
+     * A single membership resolves on its own, because there is nothing to disambiguate.
+     */
+    readonly organizationId: string | null;
     /** When the ticket stops being accepted. The Extension signs out on its own at that point. */
     readonly expiresAt: number;
 }
@@ -58,6 +85,18 @@ export interface AuthApi {
     readonly session: Signal<Session | null>;
     signIn(credentials: Credentialed): Promise<Session>;
     signOut(): Promise<void>;
+    /**
+     * Act in this organization from now on.
+     *
+     * A client-side choice, not a new credential: the ticket is unchanged and the scope rides on
+     * every request as a header. So switching organization is a state change and a re-render, never
+     * a round trip to be re-issued something.
+     *
+     * The API still checks membership on every call — a caller naming an organization they do not
+     * belong to is answered **not found**, because *"it exists, but not for you"* is itself a
+     * disclosure. This is a convenience for the page, never a grant.
+     */
+    selectOrganization(organizationId: string | null): void;
 }
 
 export const AUTH: ProviderToken<AuthApi> = provider<AuthApi>('mesh-web/auth');
@@ -136,6 +175,20 @@ const DEFAULTS = {
 } as const;
 
 /**
+ * Where a requested scope goes — one header, and nothing else.
+ *
+ * The generation before this searched path params, query params and the body for any of `orgId`,
+ * `tenantId`, `scope` or `organizationId`: four caller-controlled names across three locations, with
+ * precedence decided by object spread order. Guessing which key meant scope is how a request ends up
+ * reading the wrong organization's data, and the failure is silent because the wrong answer is a
+ * perfectly valid one.
+ *
+ * The API reads this and nothing else. Absent means *not stated*, which for a caller in exactly one
+ * organization is unambiguous and for a caller in several is an error the API explains.
+ */
+export const SCOPE_HEADER = 'x-organization';
+
+/**
  * The Extension.
  *
  * A class, and the host constructs it. Construction is side-effect free:
@@ -167,10 +220,22 @@ export class AuthExtension implements Extension<typeof NEEDS, readonly [], typeo
          */
         let ticket = store?.read();
 
+        /**
+         * Which organization the page is acting in.
+         *
+         * Beside the ticket rather than inside it, and deliberately: an org-scoped ticket would make
+         * switching organization a re-issue, and a page that holds several tickets is a page with
+         * several ways to be signed in.
+         */
+        let scope: string | null = null;
+
         // Attached once, and *before* any request could be made. The lookup runs per request, so a
-        // ticket that arrives later is on the next call rather than on the next page load.
-        cx.credentials.attach((): Readonly<Record<string, string>> =>
-            (ticket === undefined ? {} : { authorization: `Bearer ${ticket}` }));
+        // ticket — or a scope — that arrives later is on the next call rather than on the next page
+        // load.
+        cx.credentials.attach((): Readonly<Record<string, string>> => ({
+            ...(ticket === undefined ? {} : { authorization: `Bearer ${ticket}` }),
+            ...(scope === null ? {} : { [SCOPE_HEADER]: scope }),
+        }));
 
         /**
          * One request, by path.
@@ -206,16 +271,33 @@ export class AuthExtension implements Extension<typeof NEEDS, readonly [], typeo
 
         const clear = (): void => {
             ticket = undefined;
+            scope = null;
             store?.clear();
             session.set(null);
         };
 
-        const sessionFrom = (who: WhoamiReply, expiresAt: number): Session => ({
-            userId: who.userId,
-            displayName: who.displayName,
-            roles: who.roles,
-            expiresAt,
-        });
+        /**
+         * One membership resolves itself; several do not.
+         *
+         * Choosing on someone's behalf when they belong to two organizations is exactly the mistake
+         * the API refuses to make, and making it here instead would be worse — the page would look
+         * confidently wrong rather than asking.
+         */
+        const sessionFrom = (who: WhoamiReply, expiresAt: number): Session => {
+            const memberships = who.organizations;
+            const only = memberships.length === 1 ? memberships[0]!.organizationId : null;
+            scope = scope ?? only;
+
+            return {
+                userId: who.userId,
+                email: who.email,
+                displayName: who.displayName,
+                roles: who.roles,
+                memberships,
+                organizationId: scope,
+                expiresAt,
+            };
+        };
 
         /** Ask the API who this ticket belongs to. The API is the only thing that can answer. */
         const restore = async (expiresAt: number): Promise<Session | null> => {
@@ -242,6 +324,15 @@ export class AuthExtension implements Extension<typeof NEEDS, readonly [], typeo
 
         return {
             session,
+
+            selectOrganization(organizationId): void {
+                scope = organizationId;
+
+                // The session carries the choice, so anything rendering it re-renders. The header
+                // picks it up on the next request without anything being re-issued.
+                const current = session.peek();
+                if (current !== null) session.set({ ...current, organizationId });
+            },
 
             async signIn(credentials): Promise<Session> {
                 const issued = await request<IssueReply>(endpoints.issue, 'POST', credentials);
@@ -280,10 +371,21 @@ export class AuthExtension implements Extension<typeof NEEDS, readonly [], typeo
 /** A ticket restored from storage carries no expiry, so the API's answer is what dates it. */
 const UNKNOWN_LIFETIME = 0;
 
+/**
+ * The two replies this reads.
+ *
+ * **Hand-written, and they should not be.** These are a second copy of mesh-serve's identity output
+ * schemas, sitting in a different repository with nothing checking that they still agree — the exact
+ * drift a generated client exists to prevent. `mesh.json` declares the three contracts; what is
+ * missing is the command that turns that declaration into types. Until it exists, adding a field to
+ * `identity.whoami` silently leaves this behind.
+ */
 interface IssueReply { readonly token: string; readonly userId: string; readonly expiresAt: number }
 interface WhoamiReply {
     readonly userId: string;
+    readonly email: string;
     readonly displayName: string;
     readonly roles: readonly string[];
+    readonly organizations: readonly Membership[];
 }
 

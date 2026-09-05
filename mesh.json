@@ -8,7 +8,7 @@
             "entry": "src/index.ts",
             "mesh": [
                 {
-                    "package": "@flybyme/mesh-identity",
+                    "package": "@flybyme/mesh-serve",
                     "version": "^0.1",
                     "contracts": [
                         "identity.ticket_issue",
