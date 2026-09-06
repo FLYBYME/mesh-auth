@@ -1,6 +1,6 @@
 {
     "name": "@flybyme/mesh-auth",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "The auth Extension: holds the session, attaches the ticket, and hands no credential to anyone.",
     "type": "module",
     "private": true,
@@ -13,7 +13,7 @@
     },
     "devDependencies": {
         "@flybyme/mesh-serve": "file:../mesh-serve",
-        "@flybyme/mesh-web": "github:FLYBYME/mesh-web#v0.5.0",
+        "@flybyme/mesh-web": "github:FLYBYME/mesh-web#v0.6.2",
         "@vitest/browser": "^2.1.9",
         "playwright": "^1.63.0",
         "typescript": "^5.9.3",

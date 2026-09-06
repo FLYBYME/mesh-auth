@@ -1,13 +1,13 @@
 {
-    "kernel": "^0.4",
+    "kernel": "^0.6",
     "parts": [
         {
             "kind": "extension",
             "id": "auth",
-            "version": "0.1.0",
+            "version": "0.2.0",
             "entry": "src/index.ts",
             "dependencies": {
-                "@flybyme/mesh-web": "0.4.0",
+                "@flybyme/mesh-web": "0.6.1",
                 "typescript": "^5.9.3"
             },
             "requiredParts": [],
